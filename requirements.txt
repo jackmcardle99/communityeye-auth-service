@@ -1,2 +1,3 @@
 flask
 Flask-Cors~=5.0.0
+psycopg2
