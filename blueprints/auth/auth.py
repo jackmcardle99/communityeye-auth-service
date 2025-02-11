@@ -19,35 +19,37 @@ auth_bp = Blueprint('auth_bp', __name__)
 
 @auth_bp.route("/api/v1/register", methods=["POST"])
 def register():
+    print(request.json)
     # Don't want to allow registration if someone is logged in
     if request.headers.get('x-access-token', None) is not None:
         return make_response(jsonify({"Forbidden": "Can't register with an existing token."}), 401)
 
     required_fields = ['first_name', 'last_name', 'email_address', 'mobile_number', 'city', 'password']
     missing_fields = validate_fields(required_fields, request)
+    print(missing_fields)
     if missing_fields:
         return make_response(
-            jsonify({'Unprocessable Entity': 'Missing fields in form data.', 'missing_fields': missing_fields}), 422)
+            jsonify({'Unprocessable Entity': 'Missing fields in JSON data.', 'missing_fields': missing_fields}), 422)
 
-    if not valid_password(request.form['password']):
+    if not valid_password(request.json['password']):
         return make_response(
             jsonify({'Unprocessable Entity': 'Invalid password. Password should be 8 or more characters.'}), 422)
 
     # Hash the password using bcrypt
-    hashed_password = bcrypt.hashpw(request.form['password'].encode("utf-8"), bcrypt.gensalt())
+    hashed_password = bcrypt.hashpw(request.json['password'].encode("utf-8"), bcrypt.gensalt())
 
     # Debug: print the hashed password
     print(f"Generated hashed password: {hashed_password.decode('utf-8')}")  # Debugging line
 
     # Prepare the user data
     new_user = {
-        'first_name': request.form['first_name'],
-        'last_name': request.form['last_name'],
-        'email_address': request.form['email_address'],
-        'mobile_number': request.form['mobile_number'],
-        'city': request.form['city'],
+        'first_name': request.json['first_name'],
+        'last_name': request.json['last_name'],
+        'email_address': request.json['email_address'],
+        'mobile_number': request.json['mobile_number'],
+        'city': request.json['city'],
         'password': hashed_password.decode('utf-8'),
-        'admin': False, 
+        'admin': False,
         'creation_time': datetime.datetime.now()
     }
 
@@ -93,7 +95,6 @@ def register():
     finally:
         cursor.close()
         conn.close()
-
 
 
 @auth_bp.route("/api/v1/login", methods=['POST'])

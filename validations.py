@@ -1,6 +1,6 @@
 # check fields provided in request are valid
 def validate_fields(required_fields, request):
-    return [field for field in required_fields if field not in request.form]
+    return [field for field in required_fields if field not in request.json]
 
 # check password is valid
 def valid_password(password):
