@@ -4,6 +4,7 @@ import jwt
 import datetime
 from flask import request, jsonify, make_response, Blueprint
 from db import db_connect
+from decorators import auth_required
 from validations import validate_fields, valid_password, valid_email
 import globals
 
@@ -94,6 +95,7 @@ def register():
         cursor.close()
         conn.close()
 
+
 @auth_bp.route("/api/v1/login", methods=['POST'])
 def login():
     data = request.get_json()
@@ -148,3 +150,28 @@ def login():
 
     logger.warning("Could not verify login attempt.")
     return make_response('Could not verify', 401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+
+
+@auth_bp.route('/api/v1/logout', methods=['GET'])
+@auth_required
+def logout():
+    token = request.headers.get('x-access-token')
+    if not token:
+        logger.warning("Logout attempt failed: Token is missing.")
+        return make_response(jsonify({'error': 'Token is missing.'}), 400)
+
+    try:
+        conn = db_connect()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO blacklisted_tokens (token, blacklisted_at) VALUES (%s, %s)",
+                       (token, datetime.datetime.now()))
+        conn.commit()
+        logger.info(f"Token blacklisted successfully: {token}")
+        return make_response(jsonify({'message': 'Logged out.'}), 200)
+    except Exception as e:
+        logger.error(f"Error blacklisting token: {str(e)}")
+        conn.rollback()
+        return make_response(jsonify({'error': 'Error logging out.'}), 500)
+    finally:
+        cursor.close()
+        conn.close()
