@@ -20,4 +20,8 @@ app = create_app()
 app.register_blueprint(auth_bp)
 
 if __name__ == "__main__":
+<<<<<<< Updated upstream
     app.run(debug=True)
+=======
+    app.run(debug=True, host='0.0.0.0', port=5001)
+>>>>>>> Stashed changes
