@@ -18,7 +18,7 @@ auth_bp = Blueprint('auth_bp', __name__)
 def register():
     log_data = request.json.copy()
     if 'password' in log_data:
-        log_data['password'] = '<REDACTED>'
+        log_data['password'] = '**********'
     logger.info("Registration attempt with data: %s", log_data)
 
     if request.headers.get('x-access-token', None) is not None:
