@@ -175,3 +175,50 @@ def logout():
     finally:
         cursor.close()
         conn.close()
+
+
+@auth_bp.route('/api/v1/delete_account', methods=['DELETE'])
+@auth_required
+def delete_account():
+    token = request.headers.get('x-access-token')
+    
+    try:
+        # Decode the token directly here
+        decoded_token = jwt.decode(token, globals.secret_key, algorithms=['HS256'])
+        user_id = decoded_token.get('id')
+
+        if not user_id:
+            logger.warning("Invalid token: No user_id found.")
+            return make_response(jsonify({'error': 'Invalid token.'}), 401)
+
+        # Connect to the database
+        conn = db_connect()
+        cursor = conn.cursor()
+
+        # Check if the user exists
+        cursor.execute("SELECT user_id FROM users WHERE user_id = %s", (user_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            logger.warning("Account deletion attempt failed: User not found.")
+            return make_response(jsonify({'error': 'User not found.'}), 404)
+
+        # Delete the user account
+        cursor.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
+        conn.commit()
+
+        cursor.execute("INSERT INTO blacklisted_tokens (token, blacklisted_at) VALUES (%s, %s)",
+                       (token, datetime.datetime.now()))
+        conn.commit()
+
+        # Log success
+        logger.info(f"Account with user ID {user_id} has been deleted successfully.")
+        return make_response(jsonify({'message': 'Account deleted successfully.'}), 200)
+
+    except Exception as e:
+        logger.error(f"Error during account deletion: {str(e)}")
+        return make_response(jsonify({'error': 'Error deleting account.'}), 500)
+
+    finally:
+        cursor.close()
+        conn.close()
