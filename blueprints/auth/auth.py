@@ -126,7 +126,7 @@ def login():
 
                 if bcrypt.checkpw(password.encode('utf-8'), hashed_password_bytes):
                     token = jwt.encode({
-                        'id': user_id,
+                        'user_id': user_id,
                         'admin': admin,
                         'email_address': email,
                         'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
@@ -185,7 +185,7 @@ def delete_account():
     try:
         # Decode the token directly here
         decoded_token = jwt.decode(token, globals.secret_key, algorithms=['HS256'])
-        user_id = decoded_token.get('id')
+        user_id = decoded_token.get('user_id')
 
         if not user_id:
             logger.warning("Invalid token: No user_id found.")
@@ -213,7 +213,7 @@ def delete_account():
 
         # Log success
         logger.info(f"Account with user ID {user_id} has been deleted successfully.")
-        return make_response(jsonify({'message': 'Account deleted successfully.'}), 200)
+        return make_response(jsonify({'message': 'Account deleted successfully.'}), 201)
 
     except Exception as e:
         logger.error(f"Error during account deletion: {str(e)}")
