@@ -220,7 +220,7 @@ def test_logout_success(client):
 def test_delete_account_success(client):
     token = jwt.encode({"user_id": "1", "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, config.FLASK_SECRET_KEY, algorithm="HS256")
     mock_cursor = MagicMock()
-    # mock_cursor.fetchone.return_value = [1]
+    mock_cursor.fetchone.return_value = [1]
     mock_conn = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
 
