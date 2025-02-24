@@ -7,7 +7,6 @@ from db import db_connect
 from decorators import auth_required
 from validations import validate_fields, valid_password, valid_email
 import config
-from typing import Tuple
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,7 +15,7 @@ auth_bp = Blueprint("auth_bp", __name__)
 
 
 @auth_bp.route("/api/v1/register", methods=["POST"])
-def register() -> Tuple[make_response, int]:
+def register() -> make_response:
     """
     Register a new user.
 
@@ -144,7 +143,7 @@ def register() -> Tuple[make_response, int]:
 
 
 @auth_bp.route("/api/v1/login", methods=["POST"])
-def login() -> Tuple[make_response, int]:
+def login() -> make_response:
     """
     Log in an existing user.
 
@@ -199,7 +198,7 @@ def login() -> Tuple[make_response, int]:
                             "exp": datetime.datetime.now(datetime.timezone.utc)
                             + datetime.timedelta(minutes=30),
                         },
-                        config.secret_key,
+                        config.FLASK_SECRET_KEY,
                         algorithm="HS256",
                     )
 
@@ -239,7 +238,7 @@ def login() -> Tuple[make_response, int]:
 
 @auth_bp.route("/api/v1/logout", methods=["GET"])
 @auth_required
-def logout() -> Tuple[make_response, int]:
+def logout() -> make_response:
     """
     Log out a user by blacklisting the JWT token.
 
@@ -280,7 +279,7 @@ def logout() -> Tuple[make_response, int]:
 
 @auth_bp.route("/api/v1/delete_account", methods=["DELETE"])
 @auth_required
-def delete_account() -> Tuple[make_response, int]:
+def delete_account() -> make_response:
     """
     Delete a user account.
 
@@ -345,3 +344,37 @@ def delete_account() -> Tuple[make_response, int]:
     finally:
         cursor.close()
         conn.close()
+
+@auth_bp.route('/api/v1/validate-token', methods=['POST'])
+def validate_token() -> make_response:
+    """
+    Validate a JWT token.
+
+    This route checks if a given JWT token is blacklisted.
+
+    Returns:
+        Tuple[make_response, int]: A Flask response object containing the validation result or error message,
+                                   along with the appropriate HTTP status code.
+    """
+    token = request.json.get('token')
+    if not token:
+        logger.warning("Token validation failed: Token is missing.")
+        return make_response(jsonify({"valid": False, "Forbidden": "Token is missing."}), 401)
+
+    try:
+        conn = db_connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM blacklisted_tokens WHERE token = %s", (token,))
+        bl_token = cursor.fetchone()
+        if bl_token:
+            logger.warning("Token validation failed: Token has been cancelled.")
+            return make_response(jsonify({"valid": False, "Forbidden": "Token has been cancelled."}), 401)
+    except Exception as e:
+        logger.error(f"Error checking token blacklist: {str(e)}")
+        return make_response(jsonify({"valid": False, "error": "Internal server error"}), 500)
+    finally:
+        cursor.close()
+        conn.close()
+
+    logger.info("Token is valid.")
+    return make_response(jsonify({"valid": True}), 200)
