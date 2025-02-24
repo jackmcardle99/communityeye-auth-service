@@ -1,42 +1,77 @@
 import subprocess
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST
+import logging
 
-def init_database():
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def init_database() -> None:
+    """
+    Initialize the database by creating it if it doesn't exist and applying Flyway migrations.
+
+    This function connects to the PostgreSQL server, checks if the database exists,
+    creates it if necessary, and then applies any pending Flyway migrations.
+
+    Raises:
+        psycopg2.Error: If there is an error connecting to the PostgreSQL server.
+    """
     try:
-        # Connect to PostgreSQL server
-        conn = psycopg2.connect(dbname='postgres', user='communityeye', password='communityeye', host='localhost')
+        conn = psycopg2.connect(
+            dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD, host=DB_HOST
+        )
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cursor = conn.cursor()
 
-        # Check if the database exists
-        cursor.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = 'communityeye'")
+        cursor.execute(
+            f"SELECT 1 FROM pg_catalog.pg_database WHERE datname = '{DB_NAME}'"
+        )
         exists = cursor.fetchone()
 
         if not exists:
-            cursor.execute('CREATE DATABASE communityeye')
-            print("Database 'communityeye' created successfully.")
+            cursor.execute(f"CREATE DATABASE {DB_NAME}")
+            logger.info(f"Database '{DB_NAME}' created successfully.")
         else:
-            print("Database 'communityeye' already exists. Skipping creation")
+            logger.info(
+                f"Database '{DB_NAME}' already exists. Skipping creation."
+            )
 
         cursor.close()
         conn.close()
 
-        # Apply Flyway migrations
         apply_flyway_migrations()
 
     except psycopg2.Error as e:
-        print(f"Error connecting to PostgreSQL: {e}")
+        logger.error(f"Error connecting to PostgreSQL: {e}")
 
 
-def apply_flyway_migrations():
-    flyway_command = ['flyway', '-configFiles=flyway.conf', 'migrate']
+def apply_flyway_migrations() -> None:
+    """
+    Apply Flyway migrations to the database.
+
+    This function runs the Flyway migration command to apply any pending migrations
+    to the database.
+
+    Raises:
+        subprocess.CalledProcessError: If the Flyway migration command fails.
+    """
+    flyway_command = ["flyway", "-configFiles=flyway.conf", "migrate"]
     try:
-        subprocess.run(flyway_command, check=True)        
+        subprocess.run(flyway_command, check=True)
     except subprocess.CalledProcessError as e:
-        print(f"Flyway migration failed: {e}")
+        logger.error(f"Flyway migration failed: {e}")
 
 
-def db_connect():
-   conn = psycopg2.connect(dbname='communityeye', user='communityeye', password='communityeye', host='localhost')
-   return conn
+def db_connect() -> psycopg2.connect:
+    """
+    Establish a connection to the PostgreSQL database.
+
+    Returns:
+        psycopg2.connect: A connection object to interact with the database.
+    """
+    conn = psycopg2.connect(
+        dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD, host=DB_HOST
+    )
+    return conn

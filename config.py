@@ -1,0 +1,13 @@
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+DB_NAME = os.getenv('DB_NAME')
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_HOST = os.getenv('DB_HOST')
+FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY')
+FLASK_DEBUG = os.getenv('FLASK_DEBUG')
+FLASK_HOST = os.getenv('FLASK_HOST')
+FLASK_PORT = int(os.getenv('FLASK_PORT'))
