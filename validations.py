@@ -1,5 +1,6 @@
 import re
 
+
 def validate_fields(required_fields, request) -> list:
     """
     Validates that all required fields are present in the request JSON data.
@@ -36,16 +37,13 @@ def valid_password(password: str) -> bool:
     - Contains at least one numerical character.
     - Contains at least one non-alphanumerical character (excluding whitespace).
     """
-    # Check length
     if not (8 <= len(password) <= 16):
         return False
 
-    # Check for at least one numerical character
-    if not re.search(r'[0-9]', password):
+    if not re.search(r"[0-9]", password):
         return False
 
-    # Check for at least one non-alphanumerical character (excluding whitespace)
-    if not re.search(r'[\W_]', password):
+    if not re.search(r"[\W_]", password):
         return False
 
     return True
@@ -61,10 +59,8 @@ def valid_email(email: str) -> bool:
     Returns:
         bool: True if the email is valid, False otherwise.
     """
-    # Regular expression for validating an email
     email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
-    
-    # Match the email with the regex
+
     if re.match(email_regex, email):
         return True
     return False
