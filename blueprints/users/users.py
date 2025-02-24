@@ -12,7 +12,7 @@ users_bp = Blueprint("users_bp", __name__)
 
 @users_bp.route("/api/v1/users/<int:user_id>", methods=["GET"])
 @auth_required
-def get_user(user_id: int) -> Tuple[make_response, int]:
+def get_user(user_id: int) -> make_response:
     """
     Fetch and return user data for a given user ID.
 
