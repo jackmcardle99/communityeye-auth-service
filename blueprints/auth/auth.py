@@ -126,7 +126,7 @@ def register() -> make_response:
                 "exp": datetime.datetime.utcnow()
                 + datetime.timedelta(minutes=30),
             },
-            config.secret_key,
+            config.FLASK_SECRET_KEY,
             algorithm="HS256",
         )
 
@@ -140,6 +140,7 @@ def register() -> make_response:
     finally:
         cursor.close()
         conn.close()
+
 
 
 @auth_bp.route("/api/v1/login", methods=["POST"])
@@ -294,7 +295,7 @@ def delete_account() -> make_response:
 
     try:
         decoded_token = jwt.decode(
-            token, config.secret_key, algorithms=["HS256"]
+            token, config.FLASK_SECRET_KEY, algorithms=["HS256"]
         )
         user_id = decoded_token.get("user_id")
 
