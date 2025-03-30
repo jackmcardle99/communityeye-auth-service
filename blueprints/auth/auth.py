@@ -330,7 +330,7 @@ def delete_account() -> make_response:
             f"Account with user ID {user_id} has been deleted successfully."
         )
         return make_response(
-            jsonify({"Created": "Account deleted successfully."}), 201
+            jsonify({"Created": "Account deleted successfully."}), 204
         )
 
     except Exception as e:
