@@ -6,7 +6,7 @@ from blueprints.users.users import users_bp  # Adjust the import to reflect the 
 
 # Mocked data for the user
 USER_EMAIL = 'jane.doe@example.com'
-MOCK_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiODMiLCJhZG1pbiI6ZmFsc2UsImVtYWlsX2FkZHJlc3MiOiJqYW5lLmRvZUBleGFtcGxlLmNvbSIsImV4cCI6MTc0MzM0NjcxMX0.9gEdOW_P8T2XUY0ZjroKCWn5l3p7c9JkOcoo94JbMMY'
+MOCK_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiODMiLCJhZG1pbiI6ZmFsc2UsImVtYWlsX2FkZHJlc3MiOiJqYW5lLmRvZUBleGFtcGxlLmNvbSIsImV4cCI6MTk0MzM0NjcxMX0.XEzFRK_e9WBrArWxAJBg19QSVfWM1iOB_Sga7_4NpmQ'
 
 class UsersTestCase(unittest.TestCase):
     def setUp(self):
