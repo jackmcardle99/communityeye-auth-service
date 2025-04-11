@@ -1,8 +1,11 @@
 import logging
+import bcrypt
 from flask import jsonify, make_response, Blueprint, request
 from db import db_connect
 from decorators import auth_required
 from typing import Tuple
+
+from validations import valid_email, valid_password
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -91,8 +94,20 @@ def update_user(user_id: int) -> make_response:
 
     for field in fields_to_update:
         if field in data:
-            update_query += f"{field} = %s, "
-            update_values.append(data[field])
+            if field == "password":
+                if not valid_password(data[field]):
+                    logger.warning("Invalid password format for user ID: %s", user_id)
+                    return make_response(jsonify({"error": "Invalid password format"}), 422)
+                hashed_password = bcrypt.hashpw(data[field].encode("utf-8"), bcrypt.gensalt())
+                update_query += f"{field} = %s, "
+                update_values.append(hashed_password.decode("utf-8"))
+            if field == "email_address":
+                if not valid_email(data[field]):
+                    logger.warning("Invalid email format for user ID: %s", user_id)
+                    return make_response(jsonify({"error": "Invalid email format"}), 422)
+            else:
+                update_query += f"{field} = %s, "
+                update_values.append(data[field])
 
     if not update_values:
         logger.warning("No valid fields provided for update for user ID: %s", user_id)

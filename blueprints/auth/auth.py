@@ -78,6 +78,26 @@ def register() -> make_response:
             jsonify({"Unprocessable entity": "Invalid email address."}), 422
         )
 
+    try:
+        conn = db_connect()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT 1 FROM users WHERE email_address = %s LIMIT 1",
+            (request.json["email_address"],),
+        )
+        if cursor.fetchone():
+            logger.warning("Email already exists in the database: %s", request.json["email_address"])
+            return make_response(
+                jsonify({"Conflict": "Email address is already in use."}),
+                409, 
+            )
+    except Exception as e:
+        logger.error("Error checking email in database: %s", str(e))
+        return make_response(jsonify({"error": "Internal server error"}), 500)
+    finally:
+        cursor.close()
+        conn.close()
+
     hashed_password = bcrypt.hashpw(
         request.json["password"].encode("utf-8"), bcrypt.gensalt()
     )
@@ -140,7 +160,6 @@ def register() -> make_response:
     finally:
         cursor.close()
         conn.close()
-
 
 
 @auth_bp.route("/api/v1/login", methods=["POST"])
@@ -345,6 +364,7 @@ def delete_account() -> make_response:
     finally:
         cursor.close()
         conn.close()
+
 
 @auth_bp.route('/api/v1/validate-token', methods=['POST'])
 def validate_token() -> make_response:
