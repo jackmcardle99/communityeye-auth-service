@@ -1,10 +1,9 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from flask import Flask
-from blueprints.auth.auth import auth_bp  # Adjust the import to reflect the directory structure
+from blueprints.auth.auth import auth_bp
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Mocked data for the user
 USER_EMAIL = 'john.doe@example.com'
 USER_PASSWORD = 'P@ssword123'
 
@@ -20,10 +19,9 @@ class AuthTestCase(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_db_connect.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.return_value = None  # Simulate no existing user
+        mock_cursor.fetchone.return_value = None
 
-        # Mock the successful insert and return a fake user ID
-        mock_cursor.fetchone.return_value = (1,)  # Simulate user ID return
+        mock_cursor.fetchone.return_value = (1,)
         response = self.client.post('/api/v1/register', json={
             "first_name": "John",
             "last_name": "Doe",
@@ -65,8 +63,8 @@ class AuthTestCase(unittest.TestCase):
             'city': 'Sample City',
             'password': USER_PASSWORD
         })
-        self.assertEqual(registration_response.status_code, 201)  # Ensure registration is successful
-        registration_token = registration_response.json['token']  # Get the token from registration response
+        self.assertEqual(registration_response.status_code, 201)  
+        registration_token = registration_response.json['token']  
 
         # Step 2: Mock database connection and cursor for login
         mock_conn = MagicMock()
@@ -109,7 +107,7 @@ class AuthTestCase(unittest.TestCase):
             'password': USER_PASSWORD
         })
         self.assertEqual(registration_response.status_code, 201)  # Ensure registration is successful
-        registration_token = registration_response.json['token']  # Get the token from registration response
+        registration_token = registration_response.json['token']  
 
         # Step 2: Mock the database connection and user retrieval for account deletion
         mock_conn = MagicMock()
