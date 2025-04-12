@@ -1,3 +1,13 @@
+"""
+File: validations.py
+Author: Jack McArdle
+
+This file is part of CommunityEye.
+
+Email: mcardle-j9@ulster.ac.uk
+B-No: B00733578
+"""
+
 import re
 
 
