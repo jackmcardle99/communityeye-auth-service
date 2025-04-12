@@ -67,8 +67,10 @@ def auth_required(func: Callable) -> Callable:
                 500,
             )
         finally:
-            cursor.close()
-            conn.close()
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
 
         logger.info(f"Authorized access for user ID: {g.user_id}")
         return func(*args, **kwargs)

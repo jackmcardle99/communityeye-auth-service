@@ -2,10 +2,10 @@ import unittest
 from unittest.mock import patch, MagicMock
 from flask import Flask
 from blueprints.auth.auth import auth_bp
-from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+import config
 
-USER_EMAIL = 'john.doe@example.com'
-USER_PASSWORD = 'P@ssword123'
+MOCK_TOKEN = jwt.encode({'user_id': 1, 'email_address': 'user@example.com', 'admin': False}, config.FLASK_SECRET_KEY, algorithm='HS256')
 
 class AuthTestCase(unittest.TestCase):
     def setUp(self):
@@ -13,128 +13,146 @@ class AuthTestCase(unittest.TestCase):
         self.app.register_blueprint(auth_bp)
         self.client = self.app.test_client()
 
+    # /api/v1/register
     @patch('blueprints.auth.auth.db_connect')
-    def test_register_success(self, mock_db_connect):
+    @patch('blueprints.auth.auth.valid_email', return_value=True)
+    @patch('blueprints.auth.auth.valid_password', return_value=True)
+    def test_register_success(self, mock_db):
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
-        mock_db_connect.return_value = mock_conn
+        mock_cursor.fetchone.side_effect = [None, [1]]
+        mock_db.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.return_value = None
 
-        mock_cursor.fetchone.return_value = (1,)
-        response = self.client.post('/api/v1/register', json={
+        payload = {
             "first_name": "John",
             "last_name": "Doe",
-            "email_address": "john.doe@example.com",
+            "email_address": "john@example.com",
             "mobile_number": "1234567890",
-            "city": "Sample City",
-            "password": "Pass1@23"
-        })
+            "city": "Belfast",
+            "password": "Password1!"
+        }
+        response = self.client.post('/api/v1/register', json=payload)
         self.assertEqual(response.status_code, 201)
+        self.assertIn('token', response.json)
+
+    def test_register_with_token_header(self):
+        response = self.client.post('/api/v1/register', headers={'x-access-token': MOCK_TOKEN})
+        self.assertEqual(response.status_code, 401)
 
     def test_register_missing_fields(self):
-        response = self.client.post('/api/v1/register', json={
-            "first_name": "John",
-            "last_name": "Doe",
-            "email_address": "john.doe@example.com",
-        })
+        response = self.client.post('/api/v1/register', json={})
         self.assertEqual(response.status_code, 422)
 
-    def test_register_with_token(self):
-        response = self.client.post('/api/v1/register', headers={"x-access-token": "dummy_token"}, json={
-            "first_name": "John",
-            "last_name": "Doe",
-            "email_address": "john.doe@example.com",
-            "mobile_number": "1234567890",
-            "city": "Sample City",
-            "password": "SecureP@ss123"
-        })
-        self.assertEqual(response.status_code, 401)
-
+    # /api/v1/login
     @patch('blueprints.auth.auth.db_connect')
-    @patch('werkzeug.security.check_password_hash')
-    def test_login_success(self, mock_check_password_hash, mock_db_connect):
-        # Step 1: Register the user first
-        registration_response = self.client.post('/api/v1/register', json={
-            'email_address': USER_EMAIL,
-            'first_name': 'John',
-            'last_name': 'Doe',
-            'mobile_number': '1234567890',
-            'city': 'Sample City',
-            'password': USER_PASSWORD
-        })
-        self.assertEqual(registration_response.status_code, 201)  
-        registration_token = registration_response.json['token']  
-
-        # Step 2: Mock database connection and cursor for login
+    @patch('blueprints.auth.auth.valid_email', return_value=True)
+    @patch('bcrypt.checkpw', return_value=True)
+    def test_login_success(self, mock_db):
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
-        mock_db_connect.return_value = mock_conn
+        mock_cursor.fetchone.return_value = (1, False, '$2b$12$hashedpassword')
+        mock_db.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
-        # mock_cursor.fetchone.return_value = (1, USER_EMAIL, generate_password_hash(USER_PASSWORD))
 
-        # Mock password check to return True
-        mock_check_password_hash.return_value = True
-
-        # Step 3: Simulate the login request with the registration token
-        login_response = self.client.post('/api/v1/login', json={
-            'email_address': USER_EMAIL,
-            'password': USER_PASSWORD
-        })
-
-        # Step 4: Assert login is successful
-        self.assertEqual(login_response.status_code, 200)
-        self.assertIn('token', login_response.json) 
-
-
-    def test_login_invalid_credentials(self):
-        response = self.client.post('/api/v1/login', json={
-            "email": "john.doe@example.com",
-            "password": "WrongPass123"
-        })
-        self.assertEqual(response.status_code, 401)
-
-    @patch('blueprints.auth.auth.db_connect')
-    @patch('blueprints.auth.auth.validate_token')
-    def test_delete_account_success(self, mock_validate_token, mock_db_connect):
-        # Step 1: Register the user first
-        registration_response = self.client.post('/api/v1/register', json={
-            'email_address': USER_EMAIL,
-            'first_name': 'John',
-            'last_name': 'Doe',
-            'mobile_number': '1234567890',
-            'city': 'Sample City',
-            'password': USER_PASSWORD
-        })
-        self.assertEqual(registration_response.status_code, 201)  # Ensure registration is successful
-        registration_token = registration_response.json['token']  
-
-        # Step 2: Mock the database connection and user retrieval for account deletion
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-        mock_db_connect.return_value = mock_conn
-        mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.return_value = (1, 'john.doe@example.com', generate_password_hash('correct_password'))
-
-        # Mock token validation to return a valid user payload
-        mock_validate_token.return_value = {'user_id': 1}  # Simulate a valid token with a user ID
-
-        # Step 3: Simulate the delete account request with the registration token
-        delete_response = self.client.delete('/api/v1/delete_account', headers={'Authorization': registration_token})
-
-        # Step 4: Assert the deletion was successful (204 No Content)
-        self.assertEqual(delete_response.status_code, 204)
-
-    @patch('blueprints.auth.auth.db_connect')
-    def test_validate_token_success(self, mock_db_connect):
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-        mock_db_connect.return_value = mock_conn
-        mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.return_value = None  # Simulate token not blacklisted
-
-        response = self.client.post('/api/v1/validate-token', json={"token": "valid_token"})
+        payload = {'email': 'john@example.com', 'password': 'Password1!'}
+        response = self.client.post('/api/v1/login', json=payload)
         self.assertEqual(response.status_code, 200)
+        self.assertIn('token', response.json)
+
+    def test_login_invalid_email_format(self):
+        payload = {'email': 'invalid-email', 'password': 'pass'}
+        response = self.client.post('/api/v1/login', json=payload)
+        self.assertEqual(response.status_code, 400)
+
+    @patch('blueprints.auth.auth.db_connect')
+    def test_login_wrong_password(self, mock_db):
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = (1, False, '$2b$12$hashedpassword')
+        mock_db.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        with patch('bcrypt.checkpw', return_value=False):
+            payload = {'email': 'john@example.com', 'password': 'WrongPass'}
+            response = self.client.post('/api/v1/login', json=payload)
+            self.assertEqual(response.status_code, 401)
+
+    # /api/v1/logout
+    @patch('blueprints.auth.auth.db_connect')
+    def test_logout_success(self, mock_db):
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_db.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        response = self.client.get('/api/v1/logout', headers={'x-access-token': MOCK_TOKEN})
+        self.assertEqual(response.status_code, 200)
+
+    def test_logout_missing_token(self):
+        response = self.client.get('/api/v1/logout')
+        self.assertEqual(response.status_code, 400)
+
+    @patch('blueprints.auth.auth.db_connect')
+    def test_logout_db_error(self, mock_db):
+        mock_conn = MagicMock()
+        mock_conn.cursor.side_effect = Exception("DB error")
+        mock_db.return_value = mock_conn
+
+        response = self.client.get('/api/v1/logout', headers={'x-access-token': MOCK_TOKEN})
+        self.assertEqual(response.status_code, 500)
+
+    # /api/v1/delete_account
+    @patch('blueprints.auth.auth.db_connect')
+    def test_delete_account_success(self, mock_db):
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = (1,)
+        mock_db.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        response = self.client.delete('/api/v1/delete_account', headers={'x-access-token': MOCK_TOKEN})
+        self.assertEqual(response.status_code, 204)
+
+    def test_delete_account_invalid_token(self):
+        invalid_token = jwt.encode({'foo': 'bar'}, config.FLASK_SECRET_KEY, algorithm='HS256')
+        response = self.client.delete('/api/v1/delete_account', headers={'x-access-token': invalid_token})
+        self.assertEqual(response.status_code, 401)
+
+    @patch('blueprints.auth.auth.db_connect')
+    def test_delete_account_user_not_found(self, mock_db):
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = None
+        mock_db.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        response = self.client.delete('/api/v1/delete_account', headers={'x-access-token': MOCK_TOKEN})
+        self.assertEqual(response.status_code, 404)
+
+    # /api/v1/validate-token
+    @patch('blueprints.auth.auth.db_connect')
+    def test_validate_token_success(self, mock_db):
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = None 
+        mock_db.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        response = self.client.post('/api/v1/validate-token', json={'token': MOCK_TOKEN})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json['valid'])
+
+    @patch('blueprints.auth.auth.db_connect')
+    def test_validate_token_blacklisted(self, mock_db):
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = True
+        mock_db.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        response = self.client.post('/api/v1/validate-token', json={'token': MOCK_TOKEN})
+        self.assertEqual(response.status_code, 401)
 
     def test_validate_token_missing(self):
         response = self.client.post('/api/v1/validate-token', json={})
